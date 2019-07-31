@@ -26,7 +26,7 @@ run the test files from the specific directory.
 
 ```julia
 using Jive
-runtests(@__DIR__, skip=[], node1=[], targets=ARGS)
+runtests(@__DIR__)
 ```
 ![runtests.svg](https://wookay.github.io/docs/Jive.jl/assets/jive/runtests.svg)
 
@@ -76,7 +76,7 @@ see also [travis job logs](https://travis-ci.org/wookay/Jive.jl/jobs/483203342#L
 
 # Watch package folders
 
-You may need to install [Revise.jl](https://github.com/timholy/Revise.jl).  You must run with the interactive switch, or uncomment the `JLOptions()` line in the following script:
+You may need to install [Revise.jl](https://github.com/timholy/Revise.jl).
 
 ```sh
 ~/.julia/dev/Jive/test/Example/test $ cat runtests.jl
@@ -84,22 +84,31 @@ using Jive
 runtests(@__DIR__, skip=["revise.jl"])
 
 ~/.julia/dev/Jive/test/Example/test $ cat revise.jl
+# julia -i -q --color=yes --project revise.jl example
+
 using Revise, Jive
 using Example
-watch(@__DIR__, sources=[pathof(Example)]) do path
-    @info :changed path
+
+trigger = function (path)
+    printstyled("changed ", color=:cyan)
+    println(path)
     revise()
     runtests(@__DIR__, skip=["revise.jl"])
 end
-# Uncomment the next line if you do not run julia with the interactive switch:
-# Base.JLOptions().isinteractive==0 && wait()
- 
-# Jive.stop(watch)
 
-~/.julia/dev/Jive/test/Example/test $ julia --project=.. -q -i revise.jl example
+watch(trigger, @__DIR__, sources=[pathof(Example)])
+trigger("")
+
+Base.JLOptions().isinteractive==0 && wait()
+
+~/.julia/dev/Jive/test/Example/test $ julia -i -q --color=yes --project revise.jl example
 watching folders ...
   - ../src
   - example
+changed
+1/1 example/test1.jl
+    Pass 1  (0.27 seconds)
+✅  All 1 test has been completed.  (0.55 seconds)
 ```
 
 when saving any files in the watching folders, it automatically run tests.
@@ -137,8 +146,11 @@ used to run the block only once.
 ```julia
 using Jive # @onlyonce
 
-@onlyonce begin
-    println(42)
+for _ in 1:10
+    @onlyonce begin
+        println(42)
+    end
+    @onlyonce(println("hello"))
 end
 ```
 
